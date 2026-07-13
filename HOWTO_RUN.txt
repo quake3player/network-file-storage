@@ -1,0 +1,402 @@
+# How to Run and Test the Distributed File System
+
+## Quick Start
+
+### 1. Build Everything
+```bash
+# From the project root directory
+cd course-project-one-project-after-another
+
+# Build all components
+cd common && make && cd ..
+cd name_server && make && cd ..
+cd storage_server && make && cd ..
+cd client && make && cd ..
+```
+
+### 2. Start the System
+```bash
+# Option A: Use the convenience script
+chmod +x start_servers.sh
+./start_servers.sh
+
+# Option B: Start manually in separate terminals
+# Terminal 1: Name Server
+cd name_server
+./name_server 8000 ../nm_data
+
+# Terminal 2: Storage Server
+cd storage_server
+./storage_server localhost 8000 SS1 9002
+
+# Terminal 3: Client
+cd client
+./client localhost 8000
+# Enter your username when prompted
+```
+
+### 3. Stop the System
+```bash
+# Option A: Use the convenience script
+./stop_servers.sh
+
+# Option B: Manual
+# Press Ctrl+C in each terminal
+# Or use: pkill -f name_server && pkill -f storage_server
+```
+
+---
+
+## Testing Commands
+
+Once the client is running, try these commands:
+
+### Basic File Operations
+
+#### 1. CREATE - Create a new file
+```
+CREATE test.txt
+```
+**Expected**: `✓ Created file 'test.txt'`
+
+#### 2. WRITE - Write content to a file
+```
+WRITE test.txt 1
+0 Hello
+1 World
+2 from
+3 Docs++
+ETIRW
+```
+**Expected**: Lock acquired → Updates applied → Write successful
+
+#### 3. READ - Read file content
+```
+READ test.txt
+```
+**Expected**: Displays the content you wrote
+
+#### 4. INFO - Get file metadata
+```
+INFO test.txt
+```
+**Expected**: Shows word count, character count, sentence count, timestamps, owner
+
+#### 5. DELETE - Delete a file
+```
+DELETE test.txt
+```
+**Expected**: `✓ Deleted file 'test.txt'`
+
+### Advanced Commands
+
+#### 6. UNDO - Revert last changes
+```
+CREATE undo_test.txt
+WRITE undo_test.txt 1
+0 Version
+1 One
+ETIRW
+READ undo_test.txt
+# Should show: Version One
+
+WRITE undo_test.txt 1
+0 Version
+1 Two
+ETIRW
+READ undo_test.txt
+# Should show: Version Two
+
+UNDO undo_test.txt
+READ undo_test.txt
+# Should show: Version One (reverted!)
+```
+
+#### 7. STREAM - Stream content word-by-word
+```
+STREAM test.txt
+```
+**Expected**: Words displayed one at a time with 0.1s delay
+
+#### 8. LIST - Show all registered users
+```
+LIST
+```
+**Expected**: List of usernames (e.g., `--> alice`, `--> bob`)
+
+#### 9. VIEW - List files
+```
+VIEW           # Your accessible files
+VIEW -a        # All files in system
+VIEW -l        # With details
+VIEW -al       # All files with details
+```
+
+#### 10. ACCESS CONTROL - Manage permissions
+
+**Add read access:**
+```
+ADDACCESS -R test.txt bob
+```
+
+**Add write access:**
+```
+ADDACCESS -W test.txt alice
+```
+
+**Remove access:**
+```
+REMACCESS test.txt bob
+```
+
+#### 11. EXEC - Execute file as shell script
+```
+CREATE hello.sh
+WRITE hello.sh 1
+0 echo
+1 "Hello
+2 from
+3 EXEC!"
+ETIRW
+
+EXEC hello.sh
+```
+**Expected**: 
+```
+=== Execution Output ===
+Hello from EXEC!
+=== Exit Code: 0 ===
+```
+
+---
+
+## Multi-Client Testing
+
+### Test Concurrent Access
+
+**Terminal 1 (Client 1 - alice):**
+```bash
+cd client && ./client localhost 8000  
+# username: alice
+CREATE shared.txt
+WRITE shared.txt 1
+0 Shared
+1 content
+ETIRW
+ADDACCESS -W shared.txt bob
+```
+
+**Terminal 2 (Client 2 - bob):**
+```bash
+cd client && ./client localhost 8000
+# username: bob
+READ shared.txt
+# Should work (alice granted access)
+
+WRITE shared.txt 1
+# Can modify if alice not currently editing
+```
+
+### Test Access Control
+
+**Terminal 1 (alice):**
+```bash
+CREATE private.txt
+WRITE private.txt 1
+0 Private
+1 data
+ETIRW
+```
+
+**Terminal 2 (bob):**
+```bash
+READ private.txt
+# Should fail: "Error: No access"
+```
+
+**Terminal 1 (alice):**
+```bash
+ADDACCESS -R private.txt bob
+```
+
+**Terminal 2 (bob):**
+```bash
+READ private.txt
+# Should now work!
+
+WRITE private.txt 1
+# Should still fail (read-only access)
+```
+
+---
+
+## Viewing Logs
+
+### Real-time log monitoring
+```bash
+# Terminal 1: Name Server logs
+tail -f nm_data/logs/nm.log
+
+# Terminal 2: Storage Server logs
+tail -f ss_data/logs/ss1.log
+```
+
+### Check for errors
+```bash
+grep ERROR nm_data/logs/nm.log
+grep ERROR ss_data/logs/ss1.log
+```
+
+---
+
+## Testing Data Persistence
+
+1. Create a file and add content
+2. Stop Storage Server (`Ctrl+C`)
+3. Restart Storage Server
+4. Try to READ the file → Should still exist!
+
+---
+
+## Troubleshooting
+
+### "Connection refused"
+- Check if Name Server is running: `ps aux | grep name_server`
+- Check if Storage Server is running: `ps aux | grep storage_server`
+- Verify ports aren't in use: `netstat -tuln | grep 8000`
+
+### "File not found"
+- File may not be registered with Name Server
+- Check SS logs to see if file exists on disk
+
+### "No access"
+- Check file ownership with `INFO filename`
+- Owner must grant access with `ADDACCESS`
+
+### Clean start
+```bash
+./stop_servers.sh
+rm -rf nm_data ss_data
+mkdir -p nm_data/acl nm_data/cache nm_data/logs
+mkdir -p ss_data/files ss_data/metadata ss_data/undo ss_data/logs
+./start_servers.sh
+```
+
+---
+
+## Advanced Testing Scenarios
+
+### Test UNDO Chain
+```
+CREATE chain.txt
+WRITE chain.txt 1 → Add "A"
+WRITE chain.txt 1 → Change to "B"
+WRITE chain.txt 1 → Change to "C"
+UNDO chain.txt → Back to "B"
+UNDO chain.txt → Back to "A"
+```
+
+### Test EXEC with Multiple Commands
+```
+CREATE script.sh
+WRITE script.sh 1
+0 echo
+1 "Line
+2 1";
+3 echo
+4 "Line
+5 2"
+ETIRW
+
+EXEC script.sh
+# Should show both lines
+```
+
+### Test Sentence Locking
+**Client 1:**
+```
+WRITE shared.txt 1
+# Don't send ETIRW yet
+```
+
+**Client 2:**
+```
+WRITE shared.txt 1
+# Should fail: sentence locked
+```
+
+**Client 1:**
+```
+ETIRW
+# Now client 2 can write
+```
+
+---
+
+## Performance Testing
+
+### Create multiple files
+```bash
+for i in {1..10}; do
+    echo "CREATE file$i.txt" | ./client localhost 8000
+done
+```
+
+### Check cache efficiency
+- First lookup (cache miss) vs second lookup (cache hit)
+- Monitor timing differences
+
+---
+
+## Complete Test Sequence
+
+Run this complete test to verify all functionality:
+
+```
+# 1. File Operations
+CREATE test.txt
+WRITE test.txt 1
+0 Hello
+1 World
+ETIRW
+READ test.txt
+INFO test.txt
+
+# 2. UNDO
+WRITE test.txt 1
+0 Modified
+1 content
+ETIRW
+UNDO test.txt
+READ test.txt
+
+# 3. Access Control
+CREATE shared.txt
+WRITE shared.txt 1
+0 Shared
+1 data
+ETIRW
+ADDACCESS -R shared.txt testuser2
+REMACCESS shared.txt testuser2
+
+# 4. EXEC
+CREATE hello.sh
+WRITE hello.sh 1
+0 echo
+1 "Testing
+2 EXEC"
+ETIRW
+EXEC hello.sh
+
+# 5. Listing
+LIST
+VIEW
+VIEW -l
+
+# 6. Cleanup
+DELETE test.txt
+DELETE shared.txt
+DELETE hello.sh
+```
+
+If all commands work, your system is fully functional! 🎉

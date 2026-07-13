@@ -1,0 +1,46 @@
+# PID files (auto-created by scripts)
+.nm_pid
+.ss_pid
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# Executables
+client/client
+name_server/name_server
+storage_server/storage_server
+
+# Runtime data directories (auto-created, contain user data)
+nm_data/
+nm_data_test/
+storage_server/ss_data/
+
+# Root level ss_data (wrong location, should not exist)
+ss_data/
+
+# Log files
+*.log
+
+# Test output files
+TEST_RESULTS.txt
+ex.txt
+
+# Temporary documentation (can be deleted)
+REORGANIZATION_SUMMARY.md
+HOWTO_RUN.txt.old
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
