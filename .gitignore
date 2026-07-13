@@ -1,46 +1,44 @@
-# PID files (auto-created by scripts)
-.nm_pid
-.ss_pid
-
-# Build artifacts
+# Compiled output
 *.o
 *.a
 *.so
-*.dylib
 
 # Executables
-client/client
 name_server/name_server
 storage_server/storage_server
+client/client
 
-# Runtime data directories (auto-created, contain user data)
+# Runtime data directories (generated on startup)
 nm_data/
-nm_data_test/
-storage_server/ss_data/
-
-# Root level ss_data (wrong location, should not exist)
 ss_data/
 
-# Log files
+# PID files
+.nm_pid
+.ss_pid
+
+# Logs
 *.log
 
-# Test output files
-TEST_RESULTS.txt
-ex.txt
+# Coursework documents
+course_project.md
+phase0_groundwork.md
+implementation_flow.md
+TESTING_GUIDE.md
+docs/TESTING_GUIDE.md
 
-# Temporary documentation (can be deleted)
-REORGANIZATION_SUMMARY.md
-HOWTO_RUN.txt.old
+# Bonus feature stubs (empty files, not source)
+MOVE
+VIEWFOLDER
 
-# Temporary files
-*.tmp
-*.swp
-*~
-
-# IDE files
+# Editor artifacts
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# OS files
+# macOS
 .DS_Store
-Thumbs.db
+
+# GitHub Classroom
+.github/
